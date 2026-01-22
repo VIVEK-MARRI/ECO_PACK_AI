@@ -49,3 +49,5 @@ Features, structure, and documentation may evolve over time.
 ---
 
 Feel free to explore the repository and follow along as EcoPackAI grows into a complete intelligent sustainability system
+
+---
