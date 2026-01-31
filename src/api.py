@@ -12,6 +12,24 @@ import os
 import json
 from datetime import datetime
 from functools import wraps
+from dotenv import load_dotenv
+
+# Base directory (project root)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env_path = os.path.join(BASE_DIR, '.env')
+
+# Load environment variables from .env file (override=True forces override of existing vars)
+load_dotenv(env_path, override=True)
+
+# Debug: Read .env file directly
+print(f"DEBUG: Reading .env directly from {env_path}")
+if os.path.exists(env_path):
+    with open(env_path, 'r') as f:
+        content = f.read()
+    print(f"DEBUG: .env content preview:")
+    for line in content.split('\n'):
+        if 'DB_PASSWORD' in line:
+            print(f"  {line}")
 
 # ============================================================================
 # CONFIGURATION
@@ -32,13 +50,16 @@ DB_CONFIG = {
     'password': os.getenv('DB_PASSWORD', 'password')
 }
 
+print(f"DEBUG: Loaded DB_PASSWORD = '{os.getenv('DB_PASSWORD')}'")
+print(f"DEBUG: DB_CONFIG = {DB_CONFIG}")
+
 # Models
 try:
-    rf_model = joblib.load('../models/rf_cost_model.pkl')
-    xgb_model = joblib.load('../models/xgb_co2_model.pkl')
+    rf_model = joblib.load(os.path.join(BASE_DIR, 'models', 'rf_cost_model.pkl'))
+    xgb_model = joblib.load(os.path.join(BASE_DIR, 'models', 'xgb_co2_model.pkl'))
     print("✓ Models loaded")
-except:
-    print("⚠ Models not loaded - predictions disabled")
+except Exception as e:
+    print(f"⚠ Models not loaded - predictions disabled: {e}")
     rf_model = xgb_model = None
 
 # ============================================================================
