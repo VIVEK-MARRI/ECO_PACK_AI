@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import ProductForm from './pages/ProductForm'
 import Recommendations from './pages/Recommendations'
 import History from './pages/History'
+import { api } from './services/api'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard')
@@ -12,11 +13,31 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState(null)
 
   useEffect(() => {
-    // Load products from localStorage
-    const saved = localStorage.getItem('products')
-    if (saved) {
-      setProducts(JSON.parse(saved))
+    // Fetch products from database via API
+    const fetchProducts = async () => {
+      try {
+        // Try to fetch from database
+        const response = await api.getAllHistory()
+        if (response && Array.isArray(response.history)) {
+          setProducts(response.history)
+        } else {
+          // Fallback to localStorage
+          const saved = localStorage.getItem('products')
+          if (saved) {
+            setProducts(JSON.parse(saved))
+          }
+        }
+      } catch (error) {
+        console.log('Database fetch failed, using localStorage')
+        // Fallback to localStorage if API fails
+        const saved = localStorage.getItem('products')
+        if (saved) {
+          setProducts(JSON.parse(saved))
+        }
+      }
     }
+    
+    fetchProducts()
   }, [])
 
   useEffect(() => {

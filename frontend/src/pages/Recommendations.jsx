@@ -1,11 +1,94 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Card from '../components/Card'
 import ScoreRing from '../components/ScoreRing'
+import { api } from '../services/api'
 
 export default function Recommendations({ product }) {
   const [selectedMaterial, setSelectedMaterial] = useState(null)
+  const [materials, setMaterials] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-  const materials = [
+  // Fetch recommendations when product changes
+  useEffect(() => {
+    if (product && product.backendId) {
+      fetchRecommendations(product.backendId)
+    }
+  }, [product])
+
+  const fetchRecommendations = async (productId) => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const response = await api.getMaterialRecommendations(productId)
+      
+      if (response.status === 'success' && response.recommendations) {
+        // Transform API data to frontend format
+        const transformedMaterials = response.recommendations.map(rec => ({
+          name: rec.material.charAt(0).toUpperCase() + rec.material.slice(1),
+          icon: getMaterialIcon(rec.material),
+          score: Math.round(rec.eco_score),
+          co2: rec.co2_impact,
+          cost: rec.cost_per_unit || rec.cost_efficiency,
+          recyclability: Math.round(rec.recyclability),
+          biodegradability: Math.round(rec.biodegradability * 100),
+          suitability: rec.suitability,
+          pros: generatePros(rec),
+          cons: generateCons(rec)
+        }))
+        
+        setMaterials(transformedMaterials)
+      } else {
+        setError('No recommendations available')
+      }
+    } catch (err) {
+      console.error('Error fetching recommendations:', err)
+      setError('Unable to fetch recommendations. Using default data.')
+      // Fallback to hardcoded data
+      setMaterials(getDefaultMaterials())
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getMaterialIcon = (material) => {
+    const icons = {
+      bamboo: '🌿',
+      paper: '📄',
+      jute: '🧵',
+      glass: '🔷',
+      metal: '⚙️',
+      plastic: '♻️',
+      bagasse: '🌾'
+    }
+    return icons[material.toLowerCase()] || '📦'
+  }
+
+  const generatePros = (rec) => {
+    const pros = []
+    if (rec.biodegradability > 0.8) pros.push('Highly biodegradable')
+    if (rec.recyclability > 85) pros.push('Excellent recyclability')
+    if (rec.co2_impact < 0.15) pros.push('Low carbon footprint')
+    if (rec.cost_efficiency > 0.6 || rec.cost_per_unit < 0.3) pros.push('Cost-effective')
+    if (rec.strength > 70) pros.push('Strong and durable')
+    if (pros.length === 0) pros.push('Moderate performance')
+    return pros
+  }
+
+  const generateCons = (rec) => {
+    const cons = []
+    if (rec.biodegradability < 0.2) cons.push('Poor biodegradability')
+    if (rec.recyclability < 40) cons.push('Limited recycling options')
+    if (rec.co2_impact > 0.5) cons.push('High CO₂ emissions')
+    if (rec.cost_efficiency < 0.3 || rec.cost_per_unit > 0.6) cons.push('Higher cost')
+    if (rec.strength < 40) cons.push('Lower structural strength')
+    if (cons.length === 0) cons.push('Trade-offs with specific attributes')
+    return cons
+  }
+
+  const getDefaultMaterials = () => {
+    return [
     {
       name: 'Bamboo',
       icon: '🌿',
@@ -72,13 +155,41 @@ export default function Recommendations({ product }) {
       pros: ['Low cost', 'Lightweight', 'Versatile'],
       cons: ['Poor biodegradability', 'High carbon footprint', 'Pollution risk']
     }
-  ]
+  ]}
 
   if (!product) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Card className="p-12 text-center">
           <p className="text-slate-600 text-lg">Select or create a product to see recommendations</p>
+        </Card>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Card className="p-12 text-center">
+          <div className="text-6xl mb-4 animate-pulse">🔄</div>
+          <p className="text-slate-600 text-lg">Analyzing materials with AI...</p>
+        </Card>
+      </div>
+    )
+  }
+
+  if (error && materials.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Card className="p-12 text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <p className="text-slate-600 text-lg">{error}</p>
+          <button 
+            onClick={() => product.backendId && fetchRecommendations(product.backendId)}
+            className="mt-4 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          >
+            Retry
+          </button>
         </Card>
       </div>
     )

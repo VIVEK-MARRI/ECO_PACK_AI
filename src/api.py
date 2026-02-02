@@ -3,16 +3,22 @@ Flask REST API for ECO_PACK_AI
 Simple practical implementation with PostgreSQL
 """
 
+import sys
+import os
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import joblib
-import os
-import json
 from datetime import datetime
 from functools import wraps
 from dotenv import load_dotenv
+from src.recommendation import RecommendationEngine
+from src.preprocessing import validate_product_input
 
 # Base directory (project root)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -20,16 +26,6 @@ env_path = os.path.join(BASE_DIR, '.env')
 
 # Load environment variables from .env file (override=True forces override of existing vars)
 load_dotenv(env_path, override=True)
-
-# Debug: Read .env file directly
-print(f"DEBUG: Reading .env directly from {env_path}")
-if os.path.exists(env_path):
-    with open(env_path, 'r') as f:
-        content = f.read()
-    print(f"DEBUG: .env content preview:")
-    for line in content.split('\n'):
-        if 'DB_PASSWORD' in line:
-            print(f"  {line}")
 
 # ============================================================================
 # CONFIGURATION
@@ -45,22 +41,18 @@ API_KEY = os.getenv('API_KEY', 'your-secret-key-change-this')
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'port': int(os.getenv('DB_PORT', 5432)),
-    'database': os.getenv('DB_NAME', 'ecopackai'),
+    'database': os.getenv('DB_NAME', 'ecopack'),
     'user': os.getenv('DB_USER', 'postgres'),
     'password': os.getenv('DB_PASSWORD', 'password')
 }
 
-print(f"DEBUG: Loaded DB_PASSWORD = '{os.getenv('DB_PASSWORD')}'")
-print(f"DEBUG: DB_CONFIG = {DB_CONFIG}")
-
-# Models
+# Initialize ML Recommendation Engine
 try:
-    rf_model = joblib.load(os.path.join(BASE_DIR, 'models', 'rf_cost_model.pkl'))
-    xgb_model = joblib.load(os.path.join(BASE_DIR, 'models', 'xgb_co2_model.pkl'))
-    print("✓ Models loaded")
+    recommendation_engine = RecommendationEngine(DB_CONFIG)
+    print("✓ ML Recommendation Engine initialized")
 except Exception as e:
-    print(f"⚠ Models not loaded - predictions disabled: {e}")
-    rf_model = xgb_model = None
+    print(f"⚠ Recommendation Engine initialization error: {e}")
+    recommendation_engine = None
 
 # ============================================================================
 # DATABASE HELPERS
@@ -152,28 +144,30 @@ def json_response(f):
 @app.route('/api/health', methods=['GET'])
 def health():
     """Health check"""
+    models_loaded = 'loaded' if recommendation_engine else 'not loaded'
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.utcnow().isoformat(),
-        'models': 'loaded' if rf_model and xgb_model else 'not loaded'
+        'models': models_loaded
     }), 200
 
 @app.route('/api/product/input', methods=['POST'])
 @require_api_key
 @json_response
 def product_input():
-    """Handle product input and store in DB"""
+    """Handle product input and store in DB with validation"""
     data = request.get_json()
     
-    # Validate
-    if not data.get('product_id'):
-        return jsonify({'error': 'product_id required'}), 400
+    # Validate input
+    is_valid, error_msg = validate_product_input(data)
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
     
     product_id = data['product_id']
     category = data.get('category', 'general')
     weight = float(data.get('weight', 0))
     strength = float(data.get('strength', 50))
-    biodegradability = float(data.get('biodegradability', 0.5))
+    biodegradability = float(data.get('biodegradability', 50)) / 100  # Normalize to 0-1
     recyclability = float(data.get('recyclability', 50))
     
     conn = get_db()
@@ -212,7 +206,7 @@ def product_input():
 @require_api_key
 @json_response
 def recommend_material():
-    """AI material recommendation"""
+    """ML-powered material recommendation"""
     data = request.get_json()
     
     if not data.get('product_id'):
@@ -234,29 +228,19 @@ def recommend_material():
         if not product:
             return jsonify({'error': 'Product not found'}), 404
         
-        # Material recommendations based on properties
-        materials = {
-            'bamboo': {'recyclability': 0.85, 'biodegradability': 0.98},
-            'paper': {'recyclability': 0.90, 'biodegradability': 0.95},
-            'metal': {'recyclability': 0.95, 'biodegradability': 0.0},
-            'plastic': {'recyclability': 0.40, 'biodegradability': 0.1},
-            'glass': {'recyclability': 0.90, 'biodegradability': 0.0},
-            'jute': {'recyclability': 0.88, 'biodegradability': 0.99}
-        }
+        # Convert product to dict
+        product_data = dict(product)
         
-        # Score materials (eco-focused)
-        scores = {}
-        for material, props in materials.items():
-            score = (props['biodegradability'] * 0.6 + props['recyclability'] * 0.4)
-            scores[material] = score
-        
-        # Sort and get top 3
-        sorted_materials = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        
-        recommendations = [
-            {'material': m[0], 'score': round(m[1], 2)} 
-            for m in sorted_materials[:3]
-        ]
+        # Get ML-powered recommendations
+        if recommendation_engine:
+            recommendations = recommendation_engine.get_recommendations(product_data, top_n=6)
+        else:
+            # Fallback to simple heuristic
+            recommendations = [
+                {'material': 'jute', 'eco_score': 95, 'co2_impact': 0.25, 'cost_efficiency': 0.68},
+                {'material': 'paper', 'eco_score': 93, 'co2_impact': 0.30, 'cost_efficiency': 0.72},
+                {'material': 'bamboo', 'eco_score': 93, 'co2_impact': 0.20, 'cost_efficiency': 0.85}
+            ]
         
         return jsonify({
             'status': 'success',
@@ -273,7 +257,7 @@ def recommend_material():
 @require_api_key
 @json_response
 def environmental_score():
-    """Calculate environmental score"""
+    """ML-powered environmental score calculation"""
     data = request.get_json()
     
     if not data.get('product_id') or not data.get('material'):
@@ -296,40 +280,45 @@ def environmental_score():
         if not product:
             return jsonify({'error': 'Product not found'}), 404
         
-        # Material eco-scores
-        eco_data = {
-            'bamboo': {'co2': 0.2, 'bio': 0.98, 'recycle': 0.85},
-            'paper': {'co2': 0.3, 'bio': 0.95, 'recycle': 0.90},
-            'jute': {'co2': 0.25, 'bio': 0.99, 'recycle': 0.88},
-            'glass': {'co2': 0.5, 'bio': 0.0, 'recycle': 0.90},
-            'metal': {'co2': 0.6, 'bio': 0.0, 'recycle': 0.95},
-            'plastic': {'co2': 0.7, 'bio': 0.1, 'recycle': 0.4}
-        }
+        product_data = dict(product)
         
-        mat_eco = eco_data.get(material, eco_data['paper'])
-        
-        # Calculate overall score (0-100)
-        overall = (
-            (1 - mat_eco['co2']) * 40 +
-            mat_eco['bio'] * 30 +
-            mat_eco['recycle'] * 30
-        )
-        
-        # Rating
-        if overall >= 75:
-            rating = 'Excellent ✓'
-        elif overall >= 60:
-            rating = 'Good ✓'
-        elif overall >= 45:
-            rating = 'Fair ⚠'
+        # Get ML-powered analysis
+        if recommendation_engine:
+            analysis = recommendation_engine.get_detailed_analysis(product_data, material)
+            if not analysis:
+                return jsonify({'error': f'Material {material} not found'}), 404
+            
+            overall = analysis['eco_score']
+            rating = analysis['rating']
+            co2 = analysis['co2_impact']
+            bio = analysis['biodegradability']
+            recycle = analysis['recyclability']
+            cost_eff = analysis['cost_efficiency']
+            
         else:
-            rating = 'Poor ✗'
+            # Fallback heuristic
+            eco_data = {
+                'bamboo': {'co2': 0.2, 'bio': 0.98, 'recycle': 85},
+                'paper': {'co2': 0.3, 'bio': 0.95, 'recycle': 90},
+                'jute': {'co2': 0.25, 'bio': 0.99, 'recycle': 88},
+                'glass': {'co2': 0.5, 'bio': 0.0, 'recycle': 90},
+                'metal': {'co2': 0.6, 'bio': 0.0, 'recycle': 95},
+                'plastic': {'co2': 0.7, 'bio': 0.1, 'recycle': 40}
+            }
+            
+            mat_eco = eco_data.get(material, eco_data['paper'])
+            overall = (1 - mat_eco['co2']) * 40 + mat_eco['bio'] * 30 + mat_eco['recycle'] * 0.3
+            rating = 'Excellent ✓' if overall >= 75 else 'Good ✓' if overall >= 60 else 'Fair ⚠'
+            co2 = mat_eco['co2']
+            bio = mat_eco['bio']
+            recycle = mat_eco['recycle']
+            cost_eff = 0.5
         
         # Store recommendation
         cursor.execute("""
-            INSERT INTO recommendations (product_id, material, eco_score)
-            VALUES (%s, %s, %s)
-        """, (product_id, material, overall))
+            INSERT INTO recommendations (product_id, material, eco_score, co2_score, cost_score)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (product_id, material, overall, co2, cost_eff))
         conn.commit()
         
         return jsonify({
@@ -338,9 +327,10 @@ def environmental_score():
             'material': material,
             'overall_score': round(overall, 2),
             'rating': rating,
-            'co2_intensity': mat_eco['co2'],
-            'biodegradability': mat_eco['bio'],
-            'recyclability': mat_eco['recycle'],
+            'co2_intensity': round(co2, 3),
+            'biodegradability': round(bio, 3) if isinstance(bio, float) else bio,
+            'recyclability': round(recycle, 2),
+            'cost_efficiency': round(cost_eff, 3),
             'timestamp': datetime.utcnow().isoformat()
         }), 200
     
@@ -380,6 +370,45 @@ def get_history(product_id):
         cursor.close()
         conn.close()
 
+@app.route('/api/history/all', methods=['GET'])
+@require_api_key
+@json_response
+def get_all_history():
+    """Get all products and their recommendations"""
+    conn = get_db()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        # Get all products
+        cursor.execute("SELECT * FROM products ORDER BY created_at DESC")
+        products = cursor.fetchall()
+        
+        # Convert to frontend-compatible format
+        history = []
+        for product in products:
+            history.append({
+                'id': product['id'],
+                'productName': product['product_id'],
+                'category': product['category'],
+                'weight': product['weight'],
+                'strength': product['strength'],
+                'recyclability': product['recyclability'],
+                'createdAt': product['created_at'].isoformat() if product['created_at'] else None
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'history': history,
+            'count': len(history)
+        }), 200
+    
+    finally:
+        cursor.close()
+        conn.close()
+
 # Error handlers
 @app.errorhandler(404)
 def not_found(e):
@@ -410,6 +439,7 @@ if __name__ == '__main__':
     print(f"  POST /api/recommend/material")
     print(f"  POST /api/score/environmental")
     print(f"  GET  /api/history/<product_id>")
+    print(f"  GET  /api/history/all")
     print(f"\nRunning on http://localhost:{port}")
     print("="*50 + "\n")
     

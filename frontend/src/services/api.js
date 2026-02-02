@@ -77,6 +77,17 @@ export const api = {
       console.error('Error getting history:', error)
       throw error
     }
+  },
+
+  // Get all products/history
+  async getAllHistory() {
+    try {
+      const response = await apiClient.get('/history/all')
+      return response.data
+    } catch (error) {
+      console.error('Error getting all history:', error)
+      throw error
+    }
   }
 }
 

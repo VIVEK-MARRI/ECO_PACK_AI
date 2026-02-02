@@ -9,7 +9,7 @@ print("Loaded dataset shape:", df.shape)
 
 db_password = os.getenv("ECOPACKAI_DB_PASSWORD") or os.getenv("POSTGRES_PASSWORD") or "admin"
 engine = create_engine(
-    f"postgresql+psycopg2://postgres:{db_password}@localhost:5432/ecopackai"
+    f"postgresql+psycopg2://postgres:{db_password}@localhost:5432/ecopack"
 )
 
 
@@ -76,7 +76,7 @@ products_df = df[
 )
 
 products_db = pd.read_sql(
-    "SELECT product_id, product_category, fragility_level, shipping_type FROM products",
+    "SELECT product_id, product_category, fragility_level, shipping_type FROM products_catalog",
     engine
 )
 
@@ -93,7 +93,7 @@ if not products_db.empty:
 
 if not products_df.empty:
     products_df.to_sql(
-        "products",
+        "products_catalog",
         engine,
         if_exists="append",
         index=False
@@ -107,7 +107,7 @@ materials_db = pd.read_sql(
 )
 
 products_db = pd.read_sql(
-    "SELECT product_id, product_category, fragility_level, shipping_type FROM products",
+    "SELECT product_id, product_category, fragility_level, shipping_type FROM products_catalog",
     engine
 )
 
@@ -132,6 +132,9 @@ scores_df = df_scores[
         "cost_efficiency_index",
     ]
 ]
+
+# Ensure unique material-product pairs before insert
+scores_df = scores_df.drop_duplicates(subset=["material_id", "product_id"])
 
 scores_db = pd.read_sql(
     "SELECT material_id, product_id FROM material_product_scores",
