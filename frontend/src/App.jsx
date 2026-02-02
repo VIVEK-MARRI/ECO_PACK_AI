@@ -18,21 +18,44 @@ function App() {
       try {
         // Try to fetch from database
         const response = await api.getAllHistory()
-        if (response && Array.isArray(response.history)) {
-          setProducts(response.history)
+        console.log('API Response:', response)
+        if (response && response.status === 'success' && Array.isArray(response.history)) {
+          const transformedProducts = response.history.map(item => ({
+            id: item.id,
+            productName: item.product_id || item.productName || 'Unnamed Product',
+            category: item.category || 'other',
+            weight: item.weight || 0,
+            strength: item.strength || 50,
+            biodegradability: item.biodegradability ? item.biodegradability * 100 : 50,
+            recyclability: item.recyclability || 50,
+            createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+            backendId: item.product_id
+          }))
+          setProducts(transformedProducts)
+          localStorage.setItem('products', JSON.stringify(transformedProducts))
         } else {
           // Fallback to localStorage
           const saved = localStorage.getItem('products')
           if (saved) {
-            setProducts(JSON.parse(saved))
+            const parsed = JSON.parse(saved)
+            console.log('Loaded from localStorage:', parsed)
+            setProducts(parsed)
+          } else {
+            console.log('No products found in localStorage')
+            setProducts([])
           }
         }
       } catch (error) {
-        console.log('Database fetch failed, using localStorage')
+        console.log('Database fetch failed, using localStorage:', error.message)
         // Fallback to localStorage if API fails
         const saved = localStorage.getItem('products')
         if (saved) {
-          setProducts(JSON.parse(saved))
+          const parsed = JSON.parse(saved)
+          console.log('Loaded from localStorage:', parsed)
+          setProducts(parsed)
+        } else {
+          console.log('No products found in localStorage')
+          setProducts([])
         }
       }
     }
