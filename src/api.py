@@ -213,6 +213,75 @@ def recommend_material():
         return jsonify({'error': 'product_id required'}), 400
     
     product_id = data['product_id']
+
+    fallback_recommendations = [
+        {
+            'material': 'bamboo',
+            'eco_score': 93,
+            'co2_impact': 0.20,
+            'cost_efficiency': 0.85,
+            'recyclability': 85,
+            'biodegradability': 0.98,
+            'cost_per_unit': 0.30,
+            'strength': 78,
+            'suitability': 0.86
+        },
+        {
+            'material': 'paper',
+            'eco_score': 90,
+            'co2_impact': 0.30,
+            'cost_efficiency': 0.72,
+            'recyclability': 90,
+            'biodegradability': 0.95,
+            'cost_per_unit': 0.22,
+            'strength': 50,
+            'suitability': 0.78
+        },
+        {
+            'material': 'jute',
+            'eco_score': 92,
+            'co2_impact': 0.25,
+            'cost_efficiency': 0.68,
+            'recyclability': 88,
+            'biodegradability': 0.99,
+            'cost_per_unit': 0.40,
+            'strength': 80,
+            'suitability': 0.84
+        },
+        {
+            'material': 'glass',
+            'eco_score': 80,
+            'co2_impact': 0.50,
+            'cost_efficiency': 0.45,
+            'recyclability': 90,
+            'biodegradability': 0.0,
+            'cost_per_unit': 1.10,
+            'strength': 85,
+            'suitability': 0.60
+        },
+        {
+            'material': 'metal',
+            'eco_score': 78,
+            'co2_impact': 0.60,
+            'cost_efficiency': 0.40,
+            'recyclability': 95,
+            'biodegradability': 0.0,
+            'cost_per_unit': 1.40,
+            'strength': 90,
+            'suitability': 0.58
+        },
+        {
+            'material': 'plastic',
+            'eco_score': 45,
+            'co2_impact': 0.70,
+            'cost_efficiency': 0.55,
+            'recyclability': 40,
+            'biodegradability': 0.10,
+            'cost_per_unit': 0.35,
+            'strength': 60,
+            'suitability': 0.42
+        }
+    ]
     
     # Get product from DB
     conn = get_db()
@@ -234,13 +303,11 @@ def recommend_material():
         # Get ML-powered recommendations
         if recommendation_engine:
             recommendations = recommendation_engine.get_recommendations(product_data, top_n=6)
+            if not recommendations:
+                recommendations = fallback_recommendations
         else:
             # Fallback to simple heuristic
-            recommendations = [
-                {'material': 'jute', 'eco_score': 95, 'co2_impact': 0.25, 'cost_efficiency': 0.68},
-                {'material': 'paper', 'eco_score': 93, 'co2_impact': 0.30, 'cost_efficiency': 0.72},
-                {'material': 'bamboo', 'eco_score': 93, 'co2_impact': 0.20, 'cost_efficiency': 0.85}
-            ]
+            recommendations = fallback_recommendations
         
         return jsonify({
             'status': 'success',

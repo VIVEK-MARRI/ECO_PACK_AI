@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'http://localhost:5000/api'
-const API_KEY = 'your-secret-key-change-this' // Should match backend
+const API_BASE_URL = 'https://eco-pack-ai.onrender.com/api'
+const API_KEY = 'eco-pack-ai-2026-secure-key' // Should match backend
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
