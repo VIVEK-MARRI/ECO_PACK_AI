@@ -11,8 +11,10 @@ export default function Recommendations({ product }) {
 
   // Fetch recommendations when product changes
   useEffect(() => {
-    if (product && product.backendId) {
-      fetchRecommendations(product.backendId)
+    if (!product) return
+    const productId = product.backendId || product.product_id || product.productId || product.productName
+    if (productId) {
+      fetchRecommendations(productId)
     }
   }, [product])
 
@@ -185,7 +187,10 @@ export default function Recommendations({ product }) {
           <div className="text-6xl mb-4">⚠️</div>
           <p className="text-slate-600 text-lg">{error}</p>
           <button 
-            onClick={() => product.backendId && fetchRecommendations(product.backendId)}
+            onClick={() => {
+              const productId = product?.backendId || product?.product_id || product?.productId || product?.productName
+              if (productId) fetchRecommendations(productId)
+            }}
             className="mt-4 px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
           >
             Retry
