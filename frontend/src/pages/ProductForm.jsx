@@ -74,19 +74,20 @@ export default function ProductForm({ onSubmit }) {
         strength: parseFloat(formData.strength),
         biodegradability: parseFloat(formData.biodegradability),
         recyclability: parseFloat(formData.recyclability),
-        backendId: response.product_id
+        backendId: response.product_id || response.status
       })
       setIsLoading(false)
     })
     .catch(error => {
       console.warn('Backend unavailable, using local storage:', error.message)
-      // Fallback to local storage
+      // Fallback to local storage with productName as ID
       onSubmit({
         ...formData,
         weight: parseFloat(formData.weight),
         strength: parseFloat(formData.strength),
         biodegradability: parseFloat(formData.biodegradability),
-        recyclability: parseFloat(formData.recyclability)
+        recyclability: parseFloat(formData.recyclability),
+        backendId: formData.productName || `PROD-${Date.now()}`
       })
       setIsLoading(false)
     })

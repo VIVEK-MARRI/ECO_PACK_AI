@@ -15,6 +15,9 @@ export default function Recommendations({ product }) {
     const productId = product.backendId || product.product_id || product.productId || product.productName
     if (productId) {
       fetchRecommendations(productId)
+    } else {
+      setError('Using default recommendations')
+      setMaterials(getDefaultMaterials())
     }
   }, [product])
 
@@ -40,9 +43,15 @@ export default function Recommendations({ product }) {
           cons: generateCons(rec)
         }))
         
-        setMaterials(transformedMaterials)
+        if (transformedMaterials.length > 0) {
+          setMaterials(transformedMaterials)
+        } else {
+          setError('No recommendations available, using defaults')
+          setMaterials(getDefaultMaterials())
+        }
       } else {
-        setError('No recommendations available')
+        setError('No recommendations available, using defaults')
+        setMaterials(getDefaultMaterials())
       }
     } catch (err) {
       console.error('Error fetching recommendations:', err)
