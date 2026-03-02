@@ -1,0 +1,85 @@
+{
+  "overall_score": 0.0,
+  "status": "FAILURE - MAJOR ISSUES DETECTED",
+  "scores": {
+    "diversity": 0,
+    "sensitivity": 0,
+    "pareto": 0,
+    "monotonicity": 0,
+    "stability": 0,
+    "edge_case": 0.0,
+    "explanation": 0
+  },
+  "issues": [
+    "Low diversity - recommendations too similar across products",
+    "Low sensitivity - preferences don't affect rankings enough",
+    "Pareto violations - dominated solutions included",
+    "Instability - identical requests return different results"
+  ],
+  "recommendations": [
+    "\u2192 Increase candidate generation diversity",
+    "\u2192 Increase preference weight impact on scoring",
+    "\u2192 Fix Pareto optimization logic",
+    "\u2192 Eliminate randomness sources"
+  ],
+  "test_details": {
+    "diversity": {
+      "score": 0,
+      "status": "FAILURE",
+      "reason": "No successful recommendations received",
+      "details": []
+    },
+    "sensitivity": {
+      "score": 0,
+      "status": "FAILURE",
+      "reason": "Insufficient successful tests",
+      "details": {}
+    },
+    "pareto": {
+      "score": 0,
+      "status": "FAILURE",
+      "reason": "API error: 404"
+    },
+    "monotonicity": {
+      "score": 0,
+      "status": "PASS",
+      "tests_passed": 0,
+      "total_tests": 0,
+      "details": []
+    },
+    "stability": {
+      "score": 0,
+      "status": "FAILURE",
+      "reason": "No successful requests"
+    },
+    "edge_case": {
+      "score": 0.0,
+      "status": "PARTIAL",
+      "tests_passed": 0,
+      "total_tests": 4,
+      "details": {
+        "ultra_fragile": {
+          "passed": false,
+          "reason": "HTTP 404"
+        },
+        "ultra_heavy": {
+          "passed": false,
+          "reason": "HTTP 404"
+        },
+        "ultra_eco": {
+          "passed": false,
+          "reason": "HTTP 404"
+        },
+        "minimal_product": {
+          "passed": false,
+          "reason": "HTTP 404"
+        }
+      }
+    },
+    "explanation": {
+      "score": 0,
+      "status": "FAILURE",
+      "reason": "API error: 404"
+    }
+  }
+}

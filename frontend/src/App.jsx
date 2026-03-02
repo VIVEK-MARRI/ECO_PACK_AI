@@ -1,14 +1,43 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import './index.css'
-import Navbar from './components/Navbar'
+import AppLayout from './layouts/AppLayout'
 import Dashboard from './pages/Dashboard'
 import ProductForm from './pages/ProductForm'
 import Recommendations from './pages/Recommendations'
 import History from './pages/History'
+import Landing from './pages/Landing'
 import { api } from './services/api'
 
+// Loading Screen
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex items-center justify-center">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+        className="w-12 h-12 border-3 border-emerald-500/20 border-t-emerald-500 rounded-full"
+      />
+    </div>
+  )
+}
+
+// Page Transition Wrapper
+function PageWrapper({ children }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard')
   const [products, setProducts] = useState([])
   const [selectedProduct, setSelectedProduct] = useState(null)
 
@@ -76,28 +105,120 @@ function App() {
     }
     setProducts([newProduct, ...products])
     setSelectedProduct(newProduct)
-    setCurrentPage('recommendations')
-  }
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <Navbar currentPage={currentPage} onPageChange={handlePageChange} />
-      
-      <main className="pt-20">
-        {currentPage === 'dashboard' && <Dashboard onNavigate={handlePageChange} productCount={products.length} />}
-        {currentPage === 'product' && <ProductForm onSubmit={handleAddProduct} />}
-        {currentPage === 'recommendations' && <Recommendations product={selectedProduct} products={products} />}
-        {currentPage === 'history' && <History products={products} onSelectProduct={(p) => {
-          setSelectedProduct(p)
-          setCurrentPage('recommendations')
-        }} />}
-      </main>
-    </div>
+    <Router>
+      <Suspense fallback={<LoadingScreen />}>
+        <AppRoutes 
+          products={products}
+          selectedProduct={selectedProduct}
+          handleAddProduct={handleAddProduct}
+          setSelectedProduct={setSelectedProduct}
+        />
+      </Suspense>
+    </Router>
   )
+}
+
+// Inner component that uses useLocation - must be inside Router
+function AppRoutes({ products, selectedProduct, handleAddProduct, setSelectedProduct }) {
+  const location = useLocation()
+  const recommendationProduct = location.state?.product || selectedProduct
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+            <Route path="/" element={<PageWrapper><Landing /></PageWrapper>} />
+            <Route
+              path="/dashboard"
+              element={
+                <PageWrapper>
+                  <AppLayout>
+                    <Dashboard onNavigate={() => {}} productCount={products.length} products={products} />
+                  </AppLayout>
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="/simulation"
+              element={
+                <PageWrapper>
+                  <AppLayout>
+                    <ProductForm onSubmit={handleAddProduct} />
+                  </AppLayout>
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="/recommendations"
+              element={
+                <PageWrapper>
+                  <AppLayout>
+                    <Recommendations product={recommendationProduct} products={products} />
+                  </AppLayout>
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="/recommendations/:id"
+              element={
+                <PageWrapper>
+                  <AppLayout>
+                    <Recommendations product={recommendationProduct} products={products} />
+                  </AppLayout>
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <PageWrapper>
+                  <AppLayout>
+                    <History
+                      products={products}
+                      onSelectProduct={(p) => {
+                        setSelectedProduct(p)
+                      }}
+                    />
+                  </AppLayout>
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <PageWrapper>
+                  <AppLayout>
+                    <Dashboard onNavigate={() => {}} productCount={products.length} products={products} />
+                  </AppLayout>
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="/sustainability"
+              element={
+                <PageWrapper>
+                  <AppLayout>
+                    <Dashboard onNavigate={() => {}} productCount={products.length} products={products} />
+                  </AppLayout>
+                </PageWrapper>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <PageWrapper>
+                  <AppLayout>
+                    <div className="p-8"><h1 className="text-2xl font-bold text-white">Settings</h1></div>
+                  </AppLayout>
+                </PageWrapper>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AnimatePresence>
+    )
 }
 
 export default App

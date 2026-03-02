@@ -1,6 +1,6 @@
 """
 ML-Powered Recommendation Engine for EcoPackAI
-Uses trained RF and XGBoost models for material recommendations
+Updated to use Industrial LightGBM models via IndustrialMLPredictor
 """
 
 import numpy as np
@@ -14,34 +14,27 @@ from src.preprocessing import (
     calculate_material_suitability,
     normalize_score
 )
+from src.production_predictor import IndustrialMLPredictor
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class RecommendationEngine:
-    """ML-powered recommendation engine"""
+    """ML-powered recommendation engine with industrial LightGBM models"""
     
     def __init__(self, db_config):
         self.db_config = db_config
-        self.rf_model = None
-        self.xgb_model = None
+        self.predictor = None
         self.load_models()
     
     def load_models(self):
-        """Load trained ML models"""
+        """Load industrial LightGBM models via IndustrialMLPredictor"""
         try:
-            rf_path = os.path.join(BASE_DIR, 'models', 'rf_cost_model.pkl')
-            xgb_path = os.path.join(BASE_DIR, 'models', 'xgb_co2_model.pkl')
-            
-            if os.path.exists(rf_path):
-                self.rf_model = joblib.load(rf_path)
-                print("✓ RF Cost Model loaded")
-            
-            if os.path.exists(xgb_path):
-                self.xgb_model = joblib.load(xgb_path)
-                print("✓ XGBoost CO2 Model loaded")
+            self.predictor = IndustrialMLPredictor()
+            print("✓ Industrial ML Predictor loaded (LightGBM Cost + CO2 models)")
         
         except Exception as e:
             print(f"⚠ Model loading error: {e}")
+            self.predictor = None
     
     def get_db_connection(self):
         """Get database connection"""
@@ -70,41 +63,38 @@ class RecommendationEngine:
             cursor.close()
             conn.close()
     
-    def predict_cost_efficiency(self, features):
-        """Predict cost efficiency using RF model"""
-        if self.rf_model is None:
+    def predict_cost_efficiency(self, input_data):
+        """Predict cost efficiency using industrial LightGBM model"""
+        if self.predictor is None:
             # Fallback heuristic
             return np.random.uniform(0.3, 0.8)
         
         try:
-            # Handle feature dimension mismatch
-            n_features = getattr(self.rf_model, 'n_features_in_', None)
-            if n_features and features.shape[1] != n_features:
-                # Use simple fallback if dimensions don't match
-                return np.random.uniform(0.4, 0.9)
-            
-            prediction = self.rf_model.predict(features)[0]
-            return float(prediction)
+            result = self.predictor.predict(input_data)
+            # Normalize cost to 0-1 range (lower cost = higher efficiency)
+            cost_pred = result['cost_prediction']
+            # Assuming cost range 0.1-0.8, normalize to efficiency score
+            efficiency = 1 - min(max((cost_pred - 0.1) / 0.7, 0), 1)
+            return float(efficiency)
         except Exception as e:
+            print(f"Cost prediction error: {e}")
             # Silent fail - return heuristic value
             return np.random.uniform(0.4, 0.9)
     
-    def predict_co2_impact(self, features):
-        """Predict CO2 impact using XGBoost model"""
-        if self.xgb_model is None:
+    def predict_co2_impact(self, input_data):
+        """Predict CO2 impact using industrial LightGBM model"""
+        if self.predictor is None:
             # Fallback heuristic
             return np.random.uniform(0.1, 0.6)
         
         try:
-            # Handle feature dimension mismatch
-            n_features = getattr(self.xgb_model, 'n_features_in_', None)
-            if n_features and features.shape[1] != n_features:
-                # Use simple fallback if dimensions don't match
-                return np.random.uniform(0.1, 0.6)
-            
-            prediction = self.xgb_model.predict(features)[0]
-            return float(prediction)
+            result = self.predictor.predict(input_data)
+            # Normalize CO2 to 0-1 range (CO2 range: 0.6-25kg)
+            co2_pred = result['co2_prediction']
+            normalized = min(max(co2_pred / 25.0, 0), 1)
+            return float(normalized)
         except Exception as e:
+            print(f"CO2 prediction error: {e}")
             # Silent fail - return heuristic value
             return np.random.uniform(0.1, 0.6)
     
@@ -144,12 +134,20 @@ class RecommendationEngine:
         
         for material in materials:
             try:
-                # Prepare features for ML prediction
-                features = prepare_features_for_prediction(product_data, material)
+                # Prepare input data for industrial predictor
+                input_data = {
+                    'strength': material.get('strength', 50.0),
+                    'weight_capacity': product_data.get('weight', 10.0),
+                    'biodegradability_score': material.get('biodegradability_score', 0.5),
+                    'recyclability_percentage': material.get('recyclability_percentage', 50.0),
+                    'fragility_level': product_data.get('fragility_level', 2),
+                    'material_name': material.get('material_type', 'paper').lower(),
+                    'shipping_mode': product_data.get('shipping_mode', 'Ground')
+                }
                 
-                # ML Predictions
-                cost_efficiency = self.predict_cost_efficiency(features)
-                co2_impact = self.predict_co2_impact(features)
+                # ML Predictions using industrial predictor
+                cost_efficiency = self.predict_cost_efficiency(input_data)
+                co2_impact = self.predict_co2_impact(input_data)
                 
                 # Material suitability
                 suitability = calculate_material_suitability(product_data, material)
@@ -197,9 +195,19 @@ class RecommendationEngine:
         if not material:
             return None
         
-        features = prepare_features_for_prediction(product_data, material)
-        cost_efficiency = self.predict_cost_efficiency(features)
-        co2_impact = self.predict_co2_impact(features)
+        # Prepare input data for  industrial predictor
+        input_data = {
+            'strength': material.get('strength', 50.0),
+            'weight_capacity': product_data.get('weight', 10.0),
+            'biodegradability_score': material.get('biodegradability_score', 0.5),
+            'recyclability_percentage': material.get('recyclability_percentage', 50.0),
+            'fragility_level': product_data.get('fragility_level', 2),
+            'material_name': material.get('material_type', 'paper').lower(),
+            'shipping_mode': product_data.get('shipping_mode', 'Ground')
+        }
+        
+        cost_efficiency = self.predict_cost_efficiency(input_data)
+        co2_impact = self.predict_co2_impact(input_data)
         suitability = calculate_material_suitability(product_data, material)
         
         eco_score = self.calculate_eco_score(

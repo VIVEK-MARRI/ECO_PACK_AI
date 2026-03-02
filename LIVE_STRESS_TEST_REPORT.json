@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-03-02 01:02:21",
+  "backend_mode": "CPU",
+  "gpu_available": false,
+  "end_to_end_metrics": {
+    "avg_latency_ms": 0.09028434753417969,
+    "p95_latency_ms": 0.11968612670898436,
+    "p99_latency_ms": 0.19891023635864433,
+    "max_latency_ms": 0.5362033843994141,
+    "min_latency_ms": 0.07557868957519531,
+    "throughput_rps": 11076.117038132461,
+    "success_rate": 1.0,
+    "error_count": 0,
+    "total_requests": 100
+  },
+  "consistency_score": 70.0,
+  "concurrency_metrics": {
+    "avg_latency_ms": 2.225440502166748,
+    "p95_latency_ms": 3.1365275382995597,
+    "p99_latency_ms": 4.095566272735595,
+    "max_latency_ms": 5.456686019897461,
+    "min_latency_ms": 0.21195411682128906,
+    "throughput_rps": 3978.9549976188714,
+    "success_rate": 1.0,
+    "error_count": 0,
+    "total_requests": 500
+  },
+  "memory_stable": true,
+  "api_burst_metrics": {
+    "avg_latency_ms": 11.665948152542114,
+    "p95_latency_ms": 14.598417282104492,
+    "p99_latency_ms": 15.345778465270996,
+    "max_latency_ms": 16.883373260498047,
+    "min_latency_ms": 0.24127960205078125,
+    "throughput_rps": 3878.0992958163206,
+    "success_rate": 1.0,
+    "error_count": 0,
+    "total_requests": 1000
+  },
+  "failover_success": true,
+  "drift_detection_success": true,
+  "race_conditions_detected": 0,
+  "memory_leak_detected": false,
+  "production_readiness_score": 92,
+  "passed": true,
+  "critical_failures": [],
+  "warnings": [
+    "Running on CPU (GPU recommended for production)",
+    "Moderate prediction variance detected"
+  ]
+}

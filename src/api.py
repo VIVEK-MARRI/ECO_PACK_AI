@@ -6,6 +6,12 @@ Simple practical implementation with PostgreSQL
 import sys
 import os
 
+# Configure UTF-8 encoding for Windows console
+if sys.platform == "win32":
+    import codecs
+    sys.stdout = codecs.getwriter("utf-8")(sys.stdout.detach())
+    sys.stderr = codecs.getwriter("utf-8")(sys.stderr.detach())
+
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -19,6 +25,20 @@ from functools import wraps
 from dotenv import load_dotenv
 from src.recommendation import RecommendationEngine
 from src.preprocessing import validate_product_input
+
+# Import industrial recommendation engine (new)
+try:
+    from src.recommendation_engine_industrial import (
+        IndustrialRecommendationEngine,
+        UserPreferences
+    )
+    print("✓ Industrial recommendation engine available")
+    INDUSTRIAL_ENGINE_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠ Industrial recommendation engine not available: {e}")
+    IndustrialRecommendationEngine = None
+    UserPreferences = None
+    INDUSTRIAL_ENGINE_AVAILABLE = False
 
 # Base directory (project root)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,13 +66,23 @@ DB_CONFIG = {
     'password': os.getenv('DB_PASSWORD', 'password')
 }
 
-# Initialize ML Recommendation Engine
+# Initialize ML Recommendation Engine (Legacy)
 try:
     recommendation_engine = RecommendationEngine(DB_CONFIG)
-    print("✓ ML Recommendation Engine initialized")
+    print("✓ ML Recommendation Engine initialized (legacy)")
 except Exception as e:
     print(f"⚠ Recommendation Engine initialization error: {e}")
     recommendation_engine = None
+
+# Initialize Industrial Recommendation Engine (New)
+industrial_engine = None
+if INDUSTRIAL_ENGINE_AVAILABLE:
+    try:
+        industrial_engine = IndustrialRecommendationEngine(DB_CONFIG)
+        print("✓ Industrial Recommendation Engine initialized")
+    except Exception as e:
+        print(f"⚠ Industrial Engine initialization error: {e}")
+        industrial_engine = None
 
 # ============================================================================
 # DATABASE HELPERS
@@ -315,6 +345,147 @@ def recommend_material():
             'recommendations': recommendations,
             'timestamp': datetime.utcnow().isoformat()
         }), 200
+    
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/recommend/industrial', methods=['POST'])
+@require_api_key
+@json_response
+def recommend_material_industrial():
+    """
+    Industrial-grade multi-objective material recommendation
+    
+    Request body:
+    {
+        "product_id": "PRODUCT_001",
+        "preferences": {
+            "cost_weight": 0.33,
+            "co2_weight": 0.33,
+            "risk_weight": 0.34,
+            "max_budget": null,
+            "max_damage_risk": 0.8,
+            "min_sustainability": 0.3,
+            "max_co2_emission": null,
+            "min_recyclability": 0.0
+        },
+        "top_n": 5
+    }
+    
+    Returns:
+    {
+        "status": "success",
+        "product_id": "PRODUCT_001",
+        "recommendations": [
+            {
+                "rank": 1,
+                "material": "bamboo",
+                "cost": 1.23,
+                "co2": 2.45,
+                "damage_risk": 0.15,
+                "sustainability_score": 0.85,
+                "pareto_rank": 0,
+                "weighted_score": 0.234,
+                "tradeoff_summary": "Low cost, Low CO₂, Low risk",
+                "why_selected": "Best overall balance...",
+                "pros": ["Highly cost-effective", "Low carbon footprint"],
+                "cons": ["Trade-offs with specific attributes"]
+            },
+            ...
+        ],
+        "engine": "industrial",
+        "preferences_applied": {...},
+        "timestamp": "2024-03-02T..."
+    }
+    """
+    data = request.get_json()
+    
+    if not data.get('product_id'):
+        return jsonify({'error': 'product_id required'}), 400
+    
+    product_id = data['product_id']
+    
+    # Check if industrial engine is available
+    if not industrial_engine:
+        return jsonify({
+            'error': 'Industrial recommendation engine not available',
+            'fallback': 'Use /api/recommend/material for legacy recommendations'
+        }), 503
+    
+    # Get product from DB
+    conn = get_db()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cursor.execute("SELECT * FROM products WHERE product_id = %s", (product_id,))
+        product = cursor.fetchone()
+        
+        if not product:
+            return jsonify({'error': 'Product not found'}), 404
+        
+        # Convert product to dict
+        product_data = dict(product)
+        
+        # Parse user preferences
+        preferences_data = data.get('preferences', {})
+        preferences = UserPreferences(
+            cost_weight=preferences_data.get('cost_weight', 0.33),
+            co2_weight=preferences_data.get('co2_weight', 0.33),
+            risk_weight=preferences_data.get('risk_weight', 0.34),
+            max_budget=preferences_data.get('max_budget', None),
+            max_damage_risk=preferences_data.get('max_damage_risk', 0.8),
+            min_sustainability=preferences_data.get('min_sustainability', 0.3),
+            max_co2_emission=preferences_data.get('max_co2_emission', None),
+            min_recyclability=preferences_data.get('min_recyclability', 0.0)
+        )
+        
+        # Get number of results
+        top_n = data.get('top_n', 5)
+        
+        # Get industrial recommendations
+        recommendations = industrial_engine.get_recommendations(
+            product_data,
+            preferences,
+            top_n
+        )
+        
+        if not recommendations:
+            return jsonify({
+                'error': 'No feasible recommendations found',
+                'message': 'Try relaxing constraints (max_budget, max_damage_risk, etc.)'
+            }), 404
+        
+        return jsonify({
+            'status': 'success',
+            'product_id': product_id,
+            'recommendations': recommendations,
+            'engine': 'industrial',
+            'preferences_applied': {
+                'cost_weight': preferences.cost_weight,
+                'co2_weight': preferences.co2_weight,
+                'risk_weight': preferences.risk_weight,
+                'max_budget': preferences.max_budget,
+                'max_damage_risk': preferences.max_damage_risk,
+                'min_sustainability': preferences.min_sustainability,
+                'max_co2_emission': preferences.max_co2_emission,
+                'min_recyclability': preferences.min_recyclability
+            },
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    
+    except Exception as e:
+        print(f"Industrial recommendation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': 'Internal server error',
+            'message': str(e)
+        }), 500
     
     finally:
         cursor.close()

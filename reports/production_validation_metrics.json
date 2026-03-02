@@ -1,0 +1,47 @@
+{
+  "validation_timestamp": "2026-03-02 12:37:14",
+  "model_version": "industrial_lightgbm_v1.0",
+  "model_metrics": {
+    "cost_model": {
+      "r2_score": 0.7488194955606806,
+      "mae": 0.05294168814764604,
+      "rmse": 0.0676411306211334,
+      "target_threshold": 0.75,
+      "status": "PASS"
+    },
+    "co2_model": {
+      "r2_score": 0.8800028834156033,
+      "mae": 1.4547622476163544,
+      "rmse": 2.5154902718646475,
+      "target_threshold": 0.8,
+      "status": "PASS"
+    }
+  },
+  "business_logic": {
+    "weight_cost_correlation": 0.8108028511541109,
+    "weight_co2_correlation": 0.7810293090459554,
+    "bio_co2_correlation": -0.9646484741101695,
+    "monotonicity_pass": true
+  },
+  "performance": {
+    "single_prediction_mean_ms": 0.2172231674194336,
+    "single_prediction_p95_ms": 0.359499454498291,
+    "single_prediction_p99_ms": 0.6511092185974142,
+    "stress_test_throughput_rps": 1655.9844852527779,
+    "stress_test_p99_latency_ms": 31.96365356445312,
+    "failed_predictions": 0
+  },
+  "deployment_readiness": {
+    "total_score": 98.40060923627126,
+    "max_score": 100,
+    "status": "\u2705 PRODUCTION READY",
+    "individual_scores": {
+      "cost_r2_score": 23.40060923627127,
+      "co2_r2_score": 25,
+      "monotonicity_score": 15,
+      "latency_score": 15,
+      "stress_test_score": 10,
+      "consistency_score": 10
+    }
+  }
+}

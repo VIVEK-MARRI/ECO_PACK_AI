@@ -1,16 +1,18 @@
 import React, { useState } from 'react'
+import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import { api } from '../services/api'
 
 export default function ProductForm({ onSubmit }) {
+  const navigate = useNavigate()
   const [formData, setFormData] = useState({
     productName: '',
     category: 'electronics',
     weight: '',
     strength: '50',
     biodegradability: '50',
-    recyclability: '50',
-    description: ''
+    recyclability: '50'
   })
 
   const [errors, setErrors] = useState({})
@@ -50,6 +52,8 @@ export default function ProductForm({ onSubmit }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    console.log('[RecommendationsFlow] Get AI Recommendations clicked', formData)
+
     const newErrors = validateForm()
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
@@ -58,7 +62,6 @@ export default function ProductForm({ onSubmit }) {
 
     setIsLoading(true)
 
-    // Try to send to backend, fallback to local storage
     api.inputProduct({
       ...formData,
       weight: parseFloat(formData.weight),
@@ -67,52 +70,67 @@ export default function ProductForm({ onSubmit }) {
       recyclability: parseFloat(formData.recyclability)
     })
     .then(response => {
-      console.log('Product saved to backend:', response)
-      onSubmit({
+      console.log('Product saved:', response)
+      const preparedProduct = {
         ...formData,
         weight: parseFloat(formData.weight),
         strength: parseFloat(formData.strength),
         biodegradability: parseFloat(formData.biodegradability),
         recyclability: parseFloat(formData.recyclability),
         backendId: response.product_id || response.status
+      }
+
+      if (typeof onSubmit === 'function') {
+        onSubmit(preparedProduct)
+      }
+
+      navigate('/recommendations', { 
+        state: { 
+          product: preparedProduct
+        }
       })
-      setIsLoading(false)
     })
     .catch(error => {
-      console.warn('Backend unavailable, using local storage:', error.message)
-      // Fallback to local storage with productName as ID
-      onSubmit({
+      console.warn('Error:', error.message)
+      const fallbackProduct = {
         ...formData,
         weight: parseFloat(formData.weight),
         strength: parseFloat(formData.strength),
         biodegradability: parseFloat(formData.biodegradability),
         recyclability: parseFloat(formData.recyclability),
         backendId: formData.productName || `PROD-${Date.now()}`
-      })
-      setIsLoading(false)
-    })
+      }
 
-    setFormData({
-      productName: '',
-      category: 'electronics',
-      weight: '',
-      strength: '50',
-      biodegradability: '50',
-      recyclability: '50',
-      description: ''
+      if (typeof onSubmit === 'function') {
+        onSubmit(fallbackProduct)
+      }
+
+      navigate('/recommendations', {
+        state: {
+          product: fallbackProduct
+        }
+      })
     })
+    .finally(() => setIsLoading(false))
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <Card className="p-8 md:p-12 animate-slide-in">
-        <h2 className="text-3xl font-bold text-slate-900 mb-2">Analyze New Product</h2>
-        <p className="text-slate-600 mb-8">Provide product details for AI-powered packaging recommendations</p>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35 }}
+      className="space-y-8"
+    >
+      <div>
+        <h1 className="text-4xl font-bold text-white mb-2">Simulation</h1>
+        <p className="text-slate-400">Create a new product for packaging optimization analysis</p>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <Card className="border border-white/10 bg-white/5 p-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
           {/* Product Name */}
           <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
+            <label className="block text-sm font-semibold text-white mb-3">
               Product Name *
             </label>
             <input
@@ -120,25 +138,25 @@ export default function ProductForm({ onSubmit }) {
               name="productName"
               value={formData.productName}
               onChange={handleChange}
-              placeholder="e.g., Smartphone Protection Box"
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+              placeholder="e.g., Premium Electronics Box"
+              className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
             />
-            {errors.productName && <p className="text-red-500 text-sm mt-1">{errors.productName}</p>}
+            {errors.productName && <p className="text-rose-400 text-sm mt-2">{errors.productName}</p>}
           </div>
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
+            <label className="block text-sm font-semibold text-white mb-3">
               Product Category
             </label>
             <select
               name="category"
               value={formData.category}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
             >
               {categories.map(cat => (
-                <option key={cat} value={cat}>
+                <option key={cat} value={cat} className="bg-slate-900">
                   {cat.charAt(0).toUpperCase() + cat.slice(1)}
                 </option>
               ))}
@@ -147,7 +165,7 @@ export default function ProductForm({ onSubmit }) {
 
           {/* Weight */}
           <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
+            <label className="block text-sm font-semibold text-white mb-3">
               Weight (kg) *
             </label>
             <input
@@ -158,19 +176,19 @@ export default function ProductForm({ onSubmit }) {
               placeholder="0.5"
               step="0.1"
               min="0"
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition"
             />
-            {errors.weight && <p className="text-red-500 text-sm mt-1">{errors.weight}</p>}
+            {errors.weight && <p className="text-rose-400 text-sm mt-2">{errors.weight}</p>}
           </div>
 
           {/* Sliders */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Strength */}
             <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
-                Strength Level
+              <label className="block text-sm font-semibold text-white mb-3">
+                Durability / Strength
               </label>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <input
                   type="range"
                   name="strength"
@@ -178,18 +196,22 @@ export default function ProductForm({ onSubmit }) {
                   max="100"
                   value={formData.strength}
                   onChange={handleChange}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-cyan-400"
                 />
-                <p className="text-right text-sm font-semibold text-green-600">{formData.strength}%</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-400">Weak</span>
+                  <span className="text-lg font-bold text-cyan-300">{formData.strength}%</span>
+                  <span className="text-xs text-slate-400">Strong</span>
+                </div>
               </div>
             </div>
 
             {/* Biodegradability */}
             <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
+              <label className="block text-sm font-semibold text-white mb-3">
                 Biodegradability
               </label>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <input
                   type="range"
                   name="biodegradability"
@@ -197,18 +219,22 @@ export default function ProductForm({ onSubmit }) {
                   max="100"
                   value={formData.biodegradability}
                   onChange={handleChange}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-emerald-400"
                 />
-                <p className="text-right text-sm font-semibold text-green-600">{formData.biodegradability}%</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-400">Low</span>
+                  <span className="text-lg font-bold text-emerald-300">{formData.biodegradability}%</span>
+                  <span className="text-xs text-slate-400">High</span>
+                </div>
               </div>
             </div>
 
             {/* Recyclability */}
             <div>
-              <label className="block text-sm font-semibold text-slate-900 mb-2">
+              <label className="block text-sm font-semibold text-white mb-3">
                 Recyclability
               </label>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <input
                   type="range"
                   name="recyclability"
@@ -216,38 +242,29 @@ export default function ProductForm({ onSubmit }) {
                   max="100"
                   value={formData.recyclability}
                   onChange={handleChange}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer accent-amber-400"
                 />
-                <p className="text-right text-sm font-semibold text-green-600">{formData.recyclability}%</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-400">Low</span>
+                  <span className="text-lg font-bold text-amber-300">{formData.recyclability}%</span>
+                  <span className="text-xs text-slate-400">High</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-semibold text-slate-900 mb-2">
-              Additional Notes
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Add any additional details about your product..."
-              rows="4"
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition resize-none"
-            />
-          </div>
-
           {/* Submit Button */}
-          <button
+          <motion.button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-bold hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full px-6 py-3 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white rounded-lg font-semibold hover:shadow-lg hover:shadow-cyan-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Processing...' : 'Get AI Recommendations →'}
-          </button>
+          </motion.button>
         </form>
       </Card>
-    </div>
+    </motion.div>
   )
 }

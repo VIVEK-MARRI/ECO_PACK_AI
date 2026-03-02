@@ -1,0 +1,59 @@
+{
+  "timestamp": "2026-03-02T07:32:38.659166",
+  "backend_url": "http://localhost:8000",
+  "total_tests": 1,
+  "passed_tests": 1,
+  "failed_tests": 9,
+  "test_details": [
+    {
+      "test": "BASE",
+      "pass": false,
+      "error": "Product registration failed"
+    },
+    {
+      "test": "HEAVIER",
+      "pass": false,
+      "error": "Product registration failed"
+    },
+    {
+      "test": "LONGER_DISTANCE",
+      "pass": false,
+      "error": "Product registration failed"
+    },
+    {
+      "test": "HIGH_ECO",
+      "pass": false,
+      "error": "Product registration failed"
+    },
+    {
+      "test": "FRAGILE",
+      "pass": false,
+      "error": "Product registration failed"
+    },
+    {
+      "test": "EXTREME_HEAVY",
+      "pass": false,
+      "error": "Product registration failed"
+    },
+    {
+      "test": "ZERO_DISTANCE",
+      "pass": false,
+      "error": "Product registration failed"
+    },
+    {
+      "test": "EXTREME_DISTANCE",
+      "pass": false,
+      "error": "Product registration failed"
+    },
+    {
+      "test": "MINIMAL_PRODUCT",
+      "pass": false,
+      "error": "Product registration failed"
+    }
+  ],
+  "monotonicity_checks": [],
+  "stability_checks": {
+    "num_predictions": 50,
+    "cost_variance": 3.0814879110195774e-33,
+    "co2_variance": 0.0,
+    "deterministic": 
