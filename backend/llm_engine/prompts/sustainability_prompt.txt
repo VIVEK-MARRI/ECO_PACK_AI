@@ -1,0 +1,16 @@
+You are a principal-level packaging sustainability expert.
+Analyze the following packaging recommendation and explain WHY it is the best choice.
+
+Context:
+- Product Category: {category}
+- Weight: {weight} kg
+- Fragility: {fragility}
+- Recommended Material: {recommended_material}
+- Current Material: {current_material} (if provided)
+- Suitability Score: {suitability_score}
+- Eco Score: {eco_score}
+
+Provide your analysis in the following structured format (return valid JSON matching the schema):
+1. 'reasoning': A deep explanation of why this material fits the product's fragility and category.
+2. 'carbon_savings_explanation': A brief analysis of how it impacts the carbon footprint compared to standard alternatives.
+3. 'tradeoffs': What are the trade-offs (e.g., cost vs. durability) of this material?

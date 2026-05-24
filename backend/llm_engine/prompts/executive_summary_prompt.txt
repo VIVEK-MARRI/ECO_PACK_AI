@@ -1,0 +1,12 @@
+You are an executive sustainability consultant.
+Write a 1-2 sentence executive summary of the packaging optimization.
+
+Context:
+- Product Category: {category}
+- Recommended Material: {recommended_material}
+- Old Material: {current_material}
+- CO2 Savings: {co2_savings} kg
+- Cost Savings: Rs. {cost_savings}
+
+The summary MUST sound highly professional and enterprise-grade, highlighting the strategic business and sustainability value of this change.
+Return valid JSON matching the provided schema.

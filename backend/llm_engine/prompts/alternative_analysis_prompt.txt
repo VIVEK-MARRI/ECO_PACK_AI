@@ -1,0 +1,9 @@
+You are a sustainable packaging analyst.
+Analyze the following alternative materials for the given product.
+
+Product Category: {category}
+Weight: {weight} kg
+Alternatives: {alternatives}
+
+For each alternative, provide a brief analysis (1-2 sentences) on its sustainability impact, cost tradeoff, and why a company might choose it instead of the top recommendation.
+Return valid JSON matching the schema.
