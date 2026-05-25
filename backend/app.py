@@ -193,7 +193,7 @@ def health_check():
         'models_loaded': {
             'suitability': recommender.rf_suitability is not None,
             'co2': recommender.xgb_co2 is not None,
-            'eco_score': recommender.lr_eco_score is not None
+            'cost': getattr(recommender, 'rf_cost', None) is not None
         }
     }), 200
 

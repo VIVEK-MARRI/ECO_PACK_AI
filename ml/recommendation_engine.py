@@ -39,11 +39,128 @@ class EcoPackRecommender:
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql://", 1)
         self.db_url = db_url
+
+        self._ensure_database_schema()
         
         print("Recommendation engine initialized")
     
     def _get_db_engine(self):
         return create_engine(self.db_url)
+
+    def _ensure_database_schema(self):
+        """Create required tables and seed default categories if the database is empty."""
+        categories_seed = [
+            ('Electronics', 'high', True, True, True, 2.0),
+            ('Clothing/Apparel', 'low', False, True, False, 1.0),
+            ('Groceries/Food', 'medium', True, True, True, 5.0),
+            ('Cosmetics', 'high', True, True, True, 0.5),
+            ('Pharmaceuticals', 'high', True, True, True, 0.2),
+            ('Books/Media', 'low', False, True, False, 1.0),
+            ('Home Goods', 'medium', True, False, False, 3.0),
+            ('Furniture', 'medium', True, False, False, 20.0),
+            ('Toys', 'medium', True, False, False, 1.5),
+            ('Jewelry', 'high', True, True, False, 0.1),
+            ('Sporting Goods', 'low', False, False, False, 5.0),
+            ('Pet Supplies', 'low', False, False, False, 3.0),
+            ('Automotive Parts', 'low', True, False, False, 10.0),
+        ]
+
+        engine = self._get_db_engine()
+        try:
+            if engine.dialect.name == 'sqlite':
+                create_categories_sql = """
+                    CREATE TABLE IF NOT EXISTS product_categories (
+                        category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        category_name TEXT UNIQUE,
+                        fragility_level TEXT,
+                        requires_cushioning BOOLEAN,
+                        moisture_sensitive BOOLEAN,
+                        temperature_sensitive BOOLEAN,
+                        typical_weight_kg REAL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """
+                create_recommendations_sql = """
+                    CREATE TABLE IF NOT EXISTS recommendations (
+                        recommendation_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        category_name TEXT,
+                        product_weight_kg REAL,
+                        fragility_level TEXT,
+                        budget_limit REAL,
+                        current_material_name TEXT,
+                        recommended_material_name TEXT,
+                        recommended_material_type TEXT,
+                        suitability_score REAL,
+                        predicted_cost_inr REAL,
+                        predicted_co2_kg REAL,
+                        eco_score REAL,
+                        co2_savings_kg REAL,
+                        cost_savings_inr REAL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """
+            else:
+                create_categories_sql = """
+                    CREATE TABLE IF NOT EXISTS product_categories (
+                        category_id SERIAL PRIMARY KEY,
+                        category_name TEXT UNIQUE,
+                        fragility_level TEXT,
+                        requires_cushioning BOOLEAN,
+                        moisture_sensitive BOOLEAN,
+                        temperature_sensitive BOOLEAN,
+                        typical_weight_kg REAL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """
+                create_recommendations_sql = """
+                    CREATE TABLE IF NOT EXISTS recommendations (
+                        recommendation_id SERIAL PRIMARY KEY,
+                        category_name TEXT,
+                        product_weight_kg REAL,
+                        fragility_level TEXT,
+                        budget_limit REAL,
+                        current_material_name TEXT,
+                        recommended_material_name TEXT,
+                        recommended_material_type TEXT,
+                        suitability_score REAL,
+                        predicted_cost_inr REAL,
+                        predicted_co2_kg REAL,
+                        eco_score REAL,
+                        co2_savings_kg REAL,
+                        cost_savings_inr REAL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """
+
+            seed_query = text("""
+                INSERT INTO product_categories
+                    (category_name, fragility_level, requires_cushioning, moisture_sensitive, temperature_sensitive, typical_weight_kg)
+                VALUES
+                    (:category_name, :fragility_level, :requires_cushioning, :moisture_sensitive, :temperature_sensitive, :typical_weight_kg)
+            """)
+
+            with engine.begin() as conn:
+                conn.execute(text(create_categories_sql))
+                conn.execute(text(create_recommendations_sql))
+
+                existing_count = conn.execute(text("SELECT COUNT(*) FROM product_categories")).scalar_one()
+                if existing_count == 0:
+                    conn.execute(
+                        seed_query,
+                        [
+                            {
+                                'category_name': name,
+                                'fragility_level': fragility_level,
+                                'requires_cushioning': requires_cushioning,
+                                'moisture_sensitive': moisture_sensitive,
+                                'temperature_sensitive': temperature_sensitive,
+                                'typical_weight_kg': typical_weight_kg,
+                            }
+                            for name, fragility_level, requires_cushioning, moisture_sensitive, temperature_sensitive, typical_weight_kg in categories_seed
+                        ]
+                    )
+        finally:
+            engine.dispose()
     
     def get_categories(self):
         engine = self._get_db_engine()
