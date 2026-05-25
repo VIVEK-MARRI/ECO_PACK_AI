@@ -76,21 +76,21 @@ flowchart TB
     classDef db fill:#451A03,stroke:#F59E0B,stroke-width:2px,color:#FEF3C7,rx:8px,ry:8px;
     classDef cluster fill:none,stroke:#64748B,stroke-width:1px,stroke-dasharray: 5 5;
 
-    subgraph UserInterface["🌐 Presentation Layer"]
+    subgraph UserInterface["Presentation Layer"]
         UI["EcoPack Frontend<br/>(Glassmorphism UI & Chart.js)"]:::ui
     end
 
-    subgraph BackendAPI["⚙️ Application Layer"]
+    subgraph BackendAPI["Application Layer"]
         API["Flask REST API<br/>(Routing & Rate Limiting)"]:::api
     end
 
-    subgraph IntelligenceEngine["🧠 Dual-AI Intelligence Engine"]
+    subgraph IntelligenceEngine["Dual-AI Intelligence Engine"]
         direction LR
         ML["Predictive ML<br/>(Random Forest & XGBoost)"]:::ml
         LLM["Generative AI<br/>(Gemini LLM & Pydantic)"]:::llm
     end
 
-    subgraph DataLayer["💾 Persistence Layer"]
+    subgraph DataLayer["Persistence Layer"]
         DB[("SQLite Database<br/>(Cache, Materials, History)")]:::db
     end
 
