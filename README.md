@@ -8,6 +8,7 @@
   [![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org/)
   [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3-F7931E?style=flat-square&logo=scikit-learn&logoColor=white)](https://scikit-learn.org)
   [![Gemini](https://img.shields.io/badge/Google_Gemini-LLM_Engine-4285F4?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/)
+    [![Live on Render](https://img.shields.io/badge/Live%20Deployment-Render-46E3B7?style=flat-square&logo=render&logoColor=white)](https://ecopackai-xmv5.onrender.com)
 </div>
 
 <br/>
@@ -20,6 +21,7 @@ EcoPackAI is a full-stack intelligence platform that recommends optimal, eco-fri
 
 - [Problem Statement](#-problem-statement)
 - [Solution Overview](#-solution-overview)
+- [Live Deployment](#-live-deployment)
 - [Key Features](#-key-features)
 - [System Architecture](#-system-architecture)
 - [Technology Stack](#-technology-stack)
@@ -40,6 +42,14 @@ EcoPackAI solves this challenge by:
 2. **Generative AI Insights**: Streaming real-time strategic reasoning, trade-off analysis, and compliance checks via Google Gemini.
 3. **Data-Driven Impact**: Comparing current packaging to recommended alternatives to calculate exact CO₂ and financial savings.
 4. **Business Intelligence**: Storing recommendation histories in SQLite for BI analytics and tracking.
+
+## 🌐 Live Deployment
+
+EcoPackAI is deployed and available on Render at:
+
+[https://ecopackai-xmv5.onrender.com](https://ecopackai-xmv5.onrender.com)
+
+This live environment hosts the full Flask application, including the recommendation engine, analytics dashboard, and AI-powered sustainability insights.
 
 ---
 
